@@ -1,0 +1,161 @@
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+padding: 0;
+font: inherit;
+font-weight: 700;
+color: rgb(29, 84, 156);
+background: none;
+border: 4px solid var(--border);
+border-color:  rgb(29, 84, 156);
+border-radius: 6px;
+cursor: pointer;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+nav button {
+  padding: 6px 14px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+nav button[aria-pressed='true'] {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+caption {
+  padding-bottom: 8px;
+  color: var(--muted);
+  text-align: left;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  font-weight: 600;
+  background: var(--bg);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.status {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-right: 6px;
+  border-radius: 999px;
+  font-size: 0.9em;
+}
+
+.status--New {
+  background: #e3edfb;
+  color: #1a4f9c;
+}
+
+.status--InProgress {
+  background: #fdf1d8;
+  color: #7a5200;
+}
+
+.status--Closed {
+  background: #e1f3e6;
+  color: #1d6b35;
+}
+
+.status--Cancelled {
+  background: #eceef1;
+  color: #4a5561;
+}
+
+code {
+  font-size: 0.8em;
+  color: var(--muted);
+}
+
+form {
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+label {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+input,
+textarea {
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+
+form button[type='submit'] {
+  justify-self: start;
+  margin-top: 14px;
+  padding: 8px 18px;
+  font: inherit;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}

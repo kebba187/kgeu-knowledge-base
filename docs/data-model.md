@@ -1,7 +1,7 @@
 # Модель данных
 
 Курс: Б1.В.ДЭ.01.02.02 · КГЭУ · семестр 1 · 2026/2027  
-Студент: Чам Кебба · Группа: ТРИС-2-23 · ЛР2 · Дата: 21.09.2026
+Студент: Чам Кебба · Группа: ТРИС-2-23 · ЛР2 · Дата: 21.09.2026, правки по ревью: 06.10.2026
 
 Связано: [требования ЛР1](lab-01-requirements.md) · [API](api-contract.md) · [матрица требований](requirements-matrix.md)
 
@@ -15,7 +15,7 @@
 | Site | подразделение | `Department`, поле `departmentId`, таблица `departments` |
 | User | пользователь: автор / координатор / редактор | `User`, поле `role` = `Author` / `Coordinator` / `Editor`, таблица `users` |
 
-Правило имён: в JSON, Python и Vue — `camelCase` (`departmentId`), в PostgreSQL — `snake_case` (`department_id`). Перевод между ними делает ORM, слова одни и те же на весь семестр.
+Правило имён: в JSON и в клиенте — `camelCase` (`departmentId`), в C# — `PascalCase` (`DepartmentId`), в PostgreSQL — `snake_case` (`department_id`). ASP.NET Core отдаёт JSON в `camelCase` сам, сопоставление с таблицами задаёт EF Core (ЛР10). Слова одни и те же на весь семестр.
 
 ## ER-диаграмма
 

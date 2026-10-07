@@ -1,0 +1,14 @@
+# Node / Vite
+node_modules/
+dist/
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Python (сервер, с ЛР7)
+.venv/
+__pycache__/
+
+# Секреты
+.env
