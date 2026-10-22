@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createTicket, getDemoFlags } from '../api/tickets.js'
+import DemoSwitches from '../components/DemoSwitches.jsx'
 import { departments } from '../dictionaries.js'
-import { addItem } from '../ticketsStore.js'
+import { appendTicket } from '../ticketsStore.js'
 
 const emptyForm = { title: '', departmentId: '', description: '' }
 
@@ -28,6 +30,8 @@ function validate(form) {
 export default function TicketNew() {
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState({})
+  const [submitError, setSubmitError] = useState('')
+  const [isSubmitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
 
   const titleInput = useRef(null)
@@ -39,30 +43,50 @@ export default function TicketNew() {
     setForm((previous) => ({ ...previous, [field]: value }))
   }
 
-  function onCreate(event) {
+  async function onCreate(event) {
     // Без preventDefault браузер перезагрузил бы страницу и состояние пропало бы.
     event.preventDefault()
+    // Защита от двойного клика: второй вызов уходит ни с чем.
+    if (isSubmitting) return
 
-    const found = validate(form)
+    // Учебный режим «без клиентской проверки» нужен, чтобы увидеть ответ 400 от сервера.
+    const found = getDemoFlags().skipClientValidation ? {} : validate(form)
     setErrors(found)
+    setSubmitError('')
     if (Object.keys(found).length > 0) return
 
-    addItem({
-      title: form.title.trim(),
-      departmentId: form.departmentId,
-      description: form.description.trim(),
-    })
-
-    setForm(emptyForm)
-    setErrors({})
-    navigate('/')
+    setSubmitting(true)
+    try {
+      // id, number и status приходят из ответа, страница их не придумывает.
+      const created = await createTicket({
+        title: form.title.trim(),
+        departmentId: form.departmentId,
+        description: form.description.trim(),
+      })
+      appendTicket(created)
+      setForm(emptyForm)
+      navigate('/')
+    } catch (error) {
+      setSubmitError(error.message)
+      // Поля остаются заполненными, чтобы человек мог исправить ошибку.
+      if (error.fields) setErrors(error.fields)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <main>
       <section aria-labelledby="new-heading">
         <h1 id="new-heading">Новая заявка на публикацию</h1>
+
         <form onSubmit={onCreate} noValidate>
+          {submitError && (
+            <p className="form-error" role="alert">
+              {submitError}
+            </p>
+          )}
+
           <label htmlFor="title">Заголовок, 5–80 символов</label>
           <input
             id="title"
@@ -126,8 +150,12 @@ export default function TicketNew() {
             </p>
           )}
 
-          <button type="submit">Создать</button>
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Создаём…' : 'Создать'}
+          </button>
         </form>
+
+        <DemoSwitches />
       </section>
     </main>
   )

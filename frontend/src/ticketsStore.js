@@ -2,35 +2,8 @@ import { useSyncExternalStore } from 'react'
 
 // Единственный общий массив заявок на весь клиент.
 // Страницы и компоненты импортируют его только отсюда.
-let items = [
-  {
-    id: 1,
-    number: 'БЗ-2026-0001',
-    title: 'Порядок оформления академического отпуска',
-    departmentId: 1,
-    description: 'Какие документы нужны, куда подавать и в какой срок рассматривают.',
-    status: 'New',
-  },
-  {
-    id: 2,
-    number: 'БЗ-2026-0002',
-    title: 'Как получить доступ к ЭИОС',
-    departmentId: 4,
-    description: 'Где взять логин, что делать при утере пароля.',
-    status: 'InProgress',
-  },
-  {
-    id: 3,
-    number: 'БЗ-2026-0003',
-    title: 'Заселение в общежитие',
-    departmentId: 3,
-    description: 'Список документов и порядок заселения первокурсников.',
-    status: 'Closed',
-  },
-]
-
-// Учебный счётчик id. В ЛР6 id и номер придут из ответа сервера.
-let nextId = items.length + 1
+// Список приходит из API (ЛР6), поэтому стартуем с пустого массива.
+let items = []
 
 // Подписчики — это компоненты, которые должны перерисоваться при изменении массива.
 const listeners = new Set()
@@ -58,18 +31,9 @@ export function setItems(nextItems) {
   emit()
 }
 
-// Добавить заявку. Статус всегда New: его задаёт процесс, а не пользователь.
-export function addItem({ title, departmentId, description }) {
-  const created = {
-    id: nextId,
-    number: `TMP-${nextId}`,
-    title,
-    departmentId,
-    description,
-    status: 'New',
-  }
-  nextId += 1
-  items = [...items, created]
+// Добавить в список заявку, которую вернул сервер (или mock).
+// id, number и status приходят из ответа — клиент их не придумывает.
+export function appendTicket(ticket) {
+  items = [...items, ticket]
   emit()
-  return created
 }
