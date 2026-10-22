@@ -29,6 +29,9 @@ let items = [
   },
 ]
 
+// Учебный счётчик id. В ЛР6 id и номер придут из ответа сервера.
+let nextId = items.length + 1
+
 // Подписчики — это компоненты, которые должны перерисоваться при изменении массива.
 const listeners = new Set()
 
@@ -53,4 +56,20 @@ export function useTickets() {
 export function setItems(nextItems) {
   items = nextItems
   emit()
+}
+
+// Добавить заявку. Статус всегда New: его задаёт процесс, а не пользователь.
+export function addItem({ title, departmentId, description }) {
+  const created = {
+    id: nextId,
+    number: `TMP-${nextId}`,
+    title,
+    departmentId,
+    description,
+    status: 'New',
+  }
+  nextId += 1
+  items = [...items, created]
+  emit()
+  return created
 }
