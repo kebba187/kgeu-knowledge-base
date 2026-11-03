@@ -1,0 +1,218 @@
+{
+  "info": {
+    "name": "База знаний КГЭУ — заявки на публикацию (ЛР8)",
+    "description": "Коллекция запросов к API курса. Базовый адрес http://localhost:5000. Порядок запросов важен: 01 создаёт заявку и кладёт её id в переменную requestId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "resource", "value": "publication-requests" },
+    { "key": "requestId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "01 POST создать — 201",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('есть id, number и статус New', () => {",
+              "  pm.expect(body.id).to.be.a('number');",
+              "  pm.expect(body.number).to.be.a('string');",
+              "  pm.expect(body.status).to.eql('New');",
+              "  pm.expect(body.assigneeUserId).to.eql(null);",
+              "});",
+              "pm.collectionVariables.set('requestId', body.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Порядок оформления академического отпуска\",\n  \"departmentId\": 1,\n  \"description\": \"Опубликовать порядок по новому положению: какие документы нужны и в какой срок рассматривают.\"\n}"
+        },
+        "url": "{{baseUrl}}/api/{{resource}}"
+      }
+    },
+    {
+      "name": "02 POST короткий заголовок — 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+              "pm.test('ошибка указана по полю title', () => {",
+              "  pm.expect(pm.response.json().fields.title).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"abc\",\n  \"departmentId\": 1,\n  \"description\": \"Описание достаточной длины для проверки правила.\"\n}"
+        },
+        "url": "{{baseUrl}}/api/{{resource}}"
+      }
+    },
+    {
+      "name": "03 GET список — 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('ответ — массив (пустой список тоже 200)', () => {",
+              "  pm.expect(pm.response.json()).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/{{resource}}" }
+    },
+    {
+      "name": "04 GET несуществующий id — 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+              "pm.test('тело без stack trace', () => {",
+              "  pm.expect(pm.response.json().error).to.eql('not_found');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/{{resource}}/999999" }
+    },
+    {
+      "name": "05 PATCH статус без редактора — 409",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+              "pm.test('это нарушение правила процесса, а не формата', () => {",
+              "  pm.expect(pm.response.json().error).to.eql('conflict');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"InProgress\"\n}" },
+        "url": "{{baseUrl}}/api/{{resource}}/{{requestId}}/status"
+      }
+    },
+    {
+      "name": "06 PATCH назначить редактора — 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('редактор записан, статус не изменился', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.assigneeUserId).to.eql(3);",
+              "  pm.expect(body.status).to.eql('New');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"assigneeUserId\": 3\n}" },
+        "url": "{{baseUrl}}/api/{{resource}}/{{requestId}}/assignee"
+      }
+    },
+    {
+      "name": "07 PATCH статус в работу — 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('статус стал InProgress', () => {",
+              "  pm.expect(pm.response.json().status).to.eql('InProgress');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"InProgress\"\n}" },
+        "url": "{{baseUrl}}/api/{{resource}}/{{requestId}}/status"
+      }
+    },
+    {
+      "name": "08 PATCH запрещённый переход — 409",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('409 Conflict', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"New\"\n}" },
+        "url": "{{baseUrl}}/api/{{resource}}/{{requestId}}/status"
+      }
+    },
+    {
+      "name": "09 PATCH неизвестный статус — 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"Done\"\n}" },
+        "url": "{{baseUrl}}/api/{{resource}}/{{requestId}}/status"
+      }
+    }
+  ]
+}

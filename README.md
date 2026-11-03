@@ -61,3 +61,4 @@ npm run dev
 - [Отчёт](docs/reports/lab-06.md) — `src/api/tickets.js` и `src/api/mockTickets.js`, состояния списка, отказы 400 / 500 / нет связи
 
 Перед запуском скопируйте `frontend/.env.example` в `frontend/.env` (файл `.env` в Git не хранится).
+
