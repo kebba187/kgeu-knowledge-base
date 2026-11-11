@@ -62,3 +62,72 @@ npm run dev
 
 Перед запуском скопируйте `frontend/.env.example` в `frontend/.env` (файл `.env` в Git не хранится).
 
+Сотрудник подразделения подаёт заявку на публикацию материала → координатор назначает редактора → редактор проверяет и публикует материал или отклоняет заявку.
+
+Статусы: `New` (Поступила) → `InProgress` (На проверке) → `Closed` (Опубликовано) / `Cancelled` (Отклонено).
+
+---
+
+## Сервер (backend)
+
+Нужен .NET SDK 8.0 или новее (`dotnet --version`).
+
+```bash
+cd backend
+dotnet restore
+dotnet run
+```
+
+| Адрес | Что это |
+|---|---|
+| `http://localhost:5000` | базовый адрес API |
+| `http://localhost:5000/swagger` | Swagger, доступен в режиме Development |
+| `http://localhost:5000/health` | проверка живости процесса |
+| `http://localhost:5000/info` | имя приложения, среда, режим хранения |
+
+Важно для ЛР7:
+
+- данные заявок пока хранятся в памяти процесса и пропадают после перезапуска;
+- `GET /health` отвечает `200`, когда процесс запущен и маршрут отвечает. Это **не** доказывает, что создание заявки работает: `/health` не принимает `title`, `departmentId` и `description`;
+- настоящее создание заявки появится в ЛР8.
+
+## База данных (ЛР9)
+
+```bash
+createdb kb_kgeu
+psql -U postgres -d kb_kgeu -f db/schema.sql
+psql -U postgres -d kb_kgeu -f db/seed.sql
+psql -U postgres -d kb_kgeu -f db/queries.sql
+```
+
+| Файл | Что внутри |
+|---|---|
+| `db/schema.sql` | таблицы `departments`, `users`, `publication_requests`: PK, FK, CHECK на четыре статуса, индексы |
+| `db/seed.sql` | учебные данные: 4 подразделения, 3 пользователя, 5 заявок со всеми статусами |
+| `db/queries.sql` | фильтр с сортировкой, JOIN со справочником, GROUP BY по статусам и подразделениям |
+
+Пароль к базе вводится интерактивно и в репозиторий не попадает. Сервер пока пишет не в базу, а в память: соединение появится в ЛР10.
+
+## Клиент (frontend)
+
+Нужен Node.js 22.18+ (LTS) или 24.12+.
+
+```bash
+cp frontend/.env.example frontend/.env   # Windows: copy frontend\.env.example frontend\.env
+cd frontend
+npm install
+npm run dev
+```
+
+Открыть `http://localhost:5173`. Адреса: `/` — список, `/new` — создание, `/login` — вход. Пока данные берутся из учебного mock (`VITE_USE_MOCK=true`), сервер подключается позже.
+
+## Документы
+
+**ЛР1–2. Анализ, требования, архитектура**
+
+- [Заявка на тему](docs/project-proposal.md) · [Требования](docs/lab-01-requirements.md)
+- [Архитектура](docs/architecture.md) · [Модель данных](docs/data-model.md) · [Контракт API](docs/api-contract.md) · [Матрица требований](docs/requirements-matrix.md)
+
+**ЛР3–7. Клиент и каркас сервера**
+
+- [Отчёты по лабораторным](docs/reports/)
