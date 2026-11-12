@@ -1,3 +1,4 @@
+using KbKgeu.Api.Data;
 using KbKgeu.Api.Dtos;
 using KbKgeu.Api.Services;
 using Microsoft.AspNetCore.Diagnostics;
@@ -25,8 +26,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 // Регистрация через DI: сервис и контроллер получают зависимости в конструкторе
-// и не создают реализацию через new. В ЛР10 хранилище сменится на EF Core.
-builder.Services.AddSingleton<IPublicationRequestStore, InMemoryPublicationRequestStore>();
+// и не создают реализацию через new. Хранилище — PostgreSQL через EF Core.
+builder.Services.AddPostgresStorage(builder.Configuration);
 builder.Services.AddScoped<PublicationRequestService>();
 
 var app = builder.Build();
