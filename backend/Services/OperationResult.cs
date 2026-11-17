@@ -7,19 +7,21 @@ public enum OperationStatus
     NotFound,
     Conflict,
     Invalid,
+    Forbidden,
 }
 
 /// <summary>
 /// Результат операции сервиса. Контроллер переводит его в HTTP-код:
-/// Success → 200, NotFound → 404, Conflict → 409, Invalid → 400.
+/// Success → 200, NotFound → 404, Conflict → 409, Invalid → 400, Forbidden → 403.
 /// </summary>
 public class OperationResult<T>
 {
-    private OperationResult(OperationStatus status, T? value, string? message)
+    private OperationResult(OperationStatus status, T? value, string? message, string? field = null)
     {
         Status = status;
         Value = value;
         Message = message;
+        Field = field;
     }
 
     public OperationStatus Status { get; }
@@ -27,6 +29,9 @@ public class OperationResult<T>
     public T? Value { get; }
 
     public string? Message { get; }
+
+    /// <summary>Поле, к которому относится ошибка проверки (для ответа 400).</summary>
+    public string? Field { get; }
 
     public static OperationResult<T> Success(T value) => new(OperationStatus.Success, value, null);
 
@@ -36,6 +41,9 @@ public class OperationResult<T>
     public static OperationResult<T> Conflict(string message) =>
         new(OperationStatus.Conflict, default, message);
 
-    public static OperationResult<T> Invalid(string message) =>
-        new(OperationStatus.Invalid, default, message);
+    public static OperationResult<T> Invalid(string message, string field) =>
+        new(OperationStatus.Invalid, default, message, field);
+
+    public static OperationResult<T> Forbidden(string message) =>
+        new(OperationStatus.Forbidden, default, message);
 }

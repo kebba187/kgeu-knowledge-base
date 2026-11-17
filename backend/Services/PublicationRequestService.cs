@@ -11,13 +11,19 @@ namespace KbKgeu.Api.Services;
 public class PublicationRequestService
 {
     private readonly IPublicationRequestStore _store;
+    private readonly IUserStore _users;
+    private readonly IDepartmentStore _departments;
     private readonly ILogger<PublicationRequestService> _logger;
 
     public PublicationRequestService(
         IPublicationRequestStore store,
+        IUserStore users,
+        IDepartmentStore departments,
         ILogger<PublicationRequestService> logger)
     {
         _store = store;
+        _users = users;
+        _departments = departments;
         _logger = logger;
     }
 
@@ -29,8 +35,15 @@ public class PublicationRequestService
     /// Создать заявку. Статус всегда New, редактор не назначен,
     /// номер и id задаёт сервер.
     /// </summary>
-    public PublicationRequest Create(CreatePublicationRequest request, int authorUserId)
+    public OperationResult<PublicationRequest> Create(CreatePublicationRequest request, int authorUserId)
     {
+        // Проверяем справочник сами: иначе внешний ключ базы дал бы 500 вместо понятного 400.
+        if (!_departments.Exists(request.DepartmentId))
+        {
+            return OperationResult<PublicationRequest>.Invalid(
+                "Такого подразделения нет в справочнике", "departmentId");
+        }
+
         var now = DateTimeOffset.UtcNow;
         var item = new PublicationRequest
         {
@@ -54,7 +67,7 @@ public class PublicationRequestService
             created.Number,
             created.DepartmentId);
 
-        return created;
+        return OperationResult<PublicationRequest>.Success(created);
     }
 
     /// <summary>Назначить редактора. Статус при этом не меняется.</summary>
@@ -64,6 +77,13 @@ public class PublicationRequestService
         if (item is null)
         {
             return OperationResult<PublicationRequest>.NotFound($"Заявка {id} не найдена");
+        }
+
+        var editor = _users.GetById(editorUserId);
+        if (editor is null || editor.Role != UserRole.Editor)
+        {
+            return OperationResult<PublicationRequest>.Invalid(
+                "Назначить можно только пользователя с ролью редактора", "assigneeUserId");
         }
 
         if (item.Status is RequestStatus.Closed or RequestStatus.Cancelled)
@@ -76,16 +96,22 @@ public class PublicationRequestService
         item.UpdatedAt = DateTimeOffset.UtcNow;
         _store.Update(item);
 
+        _logger.LogInformation(
+            "AssignEditor ok; id={Id}; assigneeUserId={AssigneeUserId}", item.Id, editorUserId);
+
         return OperationResult<PublicationRequest>.Success(item);
     }
 
-    /// <summary>Сменить статус по правилам процесса.</summary>
-    public OperationResult<PublicationRequest> ChangeStatus(int id, string status)
+    /// <summary>
+    /// Сменить статус. Двигать заявку может только назначенный на неё редактор:
+    /// чужую запись трогать нельзя (403), правила перехода проверяются отдельно (409).
+    /// </summary>
+    public OperationResult<PublicationRequest> ChangeStatus(int id, string status, int actorUserId)
     {
         if (!RequestStatus.IsKnown(status))
         {
             return OperationResult<PublicationRequest>.Invalid(
-                $"Неизвестный статус. Допустимы: {string.Join(", ", RequestStatus.All)}");
+                $"Неизвестный статус. Допустимы: {string.Join(", ", RequestStatus.All)}", "status");
         }
 
         var item = _store.GetById(id);
@@ -94,22 +120,33 @@ public class PublicationRequestService
             return OperationResult<PublicationRequest>.NotFound($"Заявка {id} не найдена");
         }
 
+        if (item.AssigneeUserId is null)
+        {
+            return OperationResult<PublicationRequest>.Conflict(
+                "Сначала назначьте редактора: без него заявку нельзя двигать");
+        }
+
+        if (item.AssigneeUserId != actorUserId)
+        {
+            return OperationResult<PublicationRequest>.Forbidden(
+                "Статус меняет только редактор, назначенный на эту заявку");
+        }
+
         if (!RequestStatus.CanMove(item.Status, status))
         {
             return OperationResult<PublicationRequest>.Conflict(
                 $"Нельзя перевести заявку из {item.Status} в {status}");
         }
 
-        // Правило процесса: в работу берёт назначенный редактор, значит он должен быть.
-        if (status == RequestStatus.InProgress && item.AssigneeUserId is null)
-        {
-            return OperationResult<PublicationRequest>.Conflict(
-                "Сначала назначьте редактора: без него заявку нельзя взять на проверку");
-        }
-
         item.Status = status;
         item.UpdatedAt = DateTimeOffset.UtcNow;
         _store.Update(item);
+
+        _logger.LogInformation(
+            "ChangeStatus ok; id={Id}; status={Status}; actorUserId={ActorUserId}",
+            item.Id,
+            status,
+            actorUserId);
 
         return OperationResult<PublicationRequest>.Success(item);
     }

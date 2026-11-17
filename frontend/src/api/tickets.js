@@ -1,11 +1,10 @@
 import { getFlags, mockCreateTicket, mockGetTickets, setFlag } from './mockTickets.js'
 
-// Один переключатель источника данных на весь клиент.
-// В ЛР7, когда поднимется ASP.NET Core, достаточно поставить false.
-const USE_MOCK = true
+// Источник данных: mock или настоящий API. В ЛР12 флаг в .env становится false.
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 // Адрес сервера берётся из .env, а не пишется в страницах.
-const baseUrl = import.meta.env.VITE_API_BASE_URL
+const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'
 const RESOURCE = '/api/publication-requests'
 
 export class ApiError extends Error {
@@ -19,6 +18,8 @@ export class ApiError extends Error {
 
 function messageFor(status) {
   if (status === 400) return 'Проверьте поля'
+  if (status === 401) return 'Нужно войти в систему'
+  if (status === 403) return 'Недостаточно прав для этого действия'
   if (status === 404) return 'Запись не найдена'
   if (status === 409) return 'Действие сейчас недопустимо'
   if (status === null) return 'Нет связи с сервером'
@@ -26,10 +27,15 @@ function messageFor(status) {
 }
 
 // Единая обёртка над fetch: возвращает ту же форму ответа, что и mock.
-async function request(path, options) {
+async function request(path, options = {}) {
   let response
   try {
-    response = await fetch(`${baseUrl}${path}`, options)
+    response = await fetch(`${baseUrl}${path}`, {
+      // Cookie сессии ходит с каждым запросом к API.
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    })
   } catch {
     // Сюда попадает только отсутствие ответа. Это не код 500.
     throw new ApiError(messageFor(null), null)
@@ -40,10 +46,13 @@ async function request(path, options) {
 }
 
 function unwrap(response) {
-  // Коды 400 и 500 приходят обычным ответом, а не исключением:
+  // Коды 400, 403 и 500 приходят обычным ответом, а не исключением:
   // поэтому проверяем response.ok, а не полагаемся на catch.
   if (!response.ok) {
-    const error = new ApiError(messageFor(response.status), response.status)
+    const error = new ApiError(
+      response.data?.message ?? messageFor(response.status),
+      response.status,
+    )
     error.fields = response.data?.fields ?? null
     throw error
   }
@@ -58,11 +67,25 @@ export async function getTickets() {
 export async function createTicket(body) {
   const response = USE_MOCK
     ? await mockCreateTicket(body)
-    : await request(RESOURCE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+    : await request(RESOURCE, { method: 'POST', body: JSON.stringify(body) })
+  return unwrap(response)
+}
+
+/// Назначить редактора — отдельный запрос, как в контракте API.
+export async function assignEditor(id, assigneeUserId) {
+  const response = await request(`${RESOURCE}/${id}/assignee`, {
+    method: 'PATCH',
+    body: JSON.stringify({ assigneeUserId }),
+  })
+  return unwrap(response)
+}
+
+/// Сменить статус — отдельный запрос.
+export async function changeStatus(id, status) {
+  const response = await request(`${RESOURCE}/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
   return unwrap(response)
 }
 

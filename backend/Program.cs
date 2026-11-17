@@ -1,8 +1,27 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using KbKgeu.Api.Data;
 using KbKgeu.Api.Dtos;
+using KbKgeu.Api.Models;
 using KbKgeu.Api.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+
+// Русский текст в ответе не должен превращаться в \u04xx.
+var jsonOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+};
+
+Task WriteApiError(HttpResponse response, int statusCode, ApiError error)
+{
+    response.StatusCode = statusCode;
+    response.ContentType = "application/json";
+    return response.WriteAsync(JsonSerializer.Serialize(error, jsonOptions));
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +48,45 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 // и не создают реализацию через new. Хранилище — PostgreSQL через EF Core.
 builder.Services.AddPostgresStorage(builder.Configuration);
 builder.Services.AddScoped<PublicationRequestService>();
+
+// Хэширование паролей библиотекой ASP.NET Core Identity: соль и стоимость внутри.
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+
+// Вход по cookie: сервер не отдаёт пароль обратно и не хранит его в JavaScript.
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "kb.session";
+        options.Cookie.HttpOnly = true;
+        // Клиент на другом порту (5173), поэтому cookie межсайтовая.
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+
+        // API отвечает кодами, а не перенаправлением на страницу входа.
+        options.Events.OnRedirectToLogin = context => WriteApiError(
+            context.Response,
+            StatusCodes.Status401Unauthorized,
+            new ApiError("unauthorized", "Нужно войти в систему"));
+
+        options.Events.OnRedirectToAccessDenied = context => WriteApiError(
+            context.Response,
+            StatusCodes.Status403Forbidden,
+            new ApiError("forbidden", "Недостаточно прав для этого действия"));
+    });
+
+builder.Services.AddAuthorization();
+
+// CORS: разрешаем только клиент курса и только с передачей cookie.
+const string ClientCorsPolicy = "client";
+var clientOrigin = builder.Configuration["Cors:ClientOrigin"] ?? "http://localhost:5173";
+builder.Services.AddCors(options => options.AddPolicy(ClientCorsPolicy, policy => policy
+    .WithOrigins(clientOrigin)
+    .AllowCredentials()
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
 
 var app = builder.Build();
 
@@ -57,6 +115,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors(ClientCorsPolicy);
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
+
+// Учебные пользователи и подразделения: только в Development.
+app.SeedStudyData();
 
 app.Run();

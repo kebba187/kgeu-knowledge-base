@@ -2,15 +2,13 @@
 node_modules/
 dist/
 
-# .NET
-**/bin/
-**/obj/
-
 # Системные файлы
 .DS_Store
 Thumbs.db
 
-# Секреты: строка подключения живёт в user-secrets, а не в репозитории
+# Python (сервер, с ЛР7)
+.venv/
+__pycache__/
+
+# Секреты
 .env
-*.user
-appsettings.Local.json

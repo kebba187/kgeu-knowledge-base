@@ -1,5 +1,8 @@
+using KbKgeu.Api.Auth;
 using KbKgeu.Api.Dtos;
+using KbKgeu.Api.Models;
 using KbKgeu.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KbKgeu.Api.Controllers;
@@ -7,16 +10,15 @@ namespace KbKgeu.Api.Controllers;
 /// <summary>
 /// Заявки на публикацию материалов базы знаний.
 /// Контроллер принимает HTTP и переводит результат сервиса в коды ответа.
+/// Без входа — 401, без нужной роли — 403 (см. docs/role-matrix.md).
 /// DELETE в курсе не используется: отмена — это статус Cancelled.
 /// </summary>
 [ApiController]
 [Route("api/publication-requests")]
 [Produces("application/json")]
+[Authorize]
 public class PublicationRequestsController : ControllerBase
 {
-    // До ЛР11 входа нет: автором считается учебный пользователь.
-    private const int DemoAuthorUserId = 1;
-
     private readonly PublicationRequestService _service;
 
     public PublicationRequestsController(PublicationRequestService service)
@@ -48,22 +50,40 @@ public class PublicationRequestsController : ControllerBase
         return Ok(PublicationRequestResponse.From(item));
     }
 
-    /// <summary>Создать заявку: ответ 201, статус New, номер от сервера.</summary>
+    /// <summary>Создать заявку: доступно роли автора, ответ 201, статус New.</summary>
     [HttpPost]
+    [Authorize(Roles = UserRole.Author)]
     [ProducesResponseType(typeof(PublicationRequestResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status403Forbidden)]
     public ActionResult<PublicationRequestResponse> Create(CreatePublicationRequest request)
     {
-        var created = _service.Create(request, DemoAuthorUserId);
-        var response = PublicationRequestResponse.From(created);
+        var authorId = CurrentUser.GetId(User);
+        if (authorId is null)
+        {
+            return Unauthorized(new ApiError("unauthorized", "Сессия не найдена"));
+        }
 
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, response);
+        var result = _service.Create(request, authorId.Value);
+        if (result.Status != OperationStatus.Success)
+        {
+            return FromResult(result);
+        }
+
+        var created = result.Value!;
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = created.Id },
+            PublicationRequestResponse.From(created));
     }
 
-    /// <summary>Назначить редактора — отдельное действие от смены статуса.</summary>
+    /// <summary>Назначить редактора: доступно координатору, статус не меняется.</summary>
     [HttpPatch("{id:int}/assignee")]
+    [Authorize(Roles = UserRole.Coordinator)]
     [ProducesResponseType(typeof(PublicationRequestResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status409Conflict)]
     public ActionResult<PublicationRequestResponse> AssignEditor(int id, AssignEditorRequest request)
@@ -72,20 +92,31 @@ public class PublicationRequestsController : ControllerBase
         return FromResult(result);
     }
 
-    /// <summary>Сменить статус — отдельное действие от назначения.</summary>
+    /// <summary>
+    /// Сменить статус: двигает только назначенный редактор.
+    /// Чужая заявка — 403, запрещённый переход — 409.
+    /// </summary>
     [HttpPatch("{id:int}/status")]
+    [Authorize(Roles = UserRole.Editor)]
     [ProducesResponseType(typeof(PublicationRequestResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status409Conflict)]
     public ActionResult<PublicationRequestResponse> ChangeStatus(int id, ChangeStatusRequest request)
     {
-        var result = _service.ChangeStatus(id, request.Status);
+        var actorId = CurrentUser.GetId(User);
+        if (actorId is null)
+        {
+            return Unauthorized(new ApiError("unauthorized", "Сессия не найдена"));
+        }
+
+        var result = _service.ChangeStatus(id, request.Status, actorId.Value);
         return FromResult(result);
     }
 
     private ActionResult<PublicationRequestResponse> FromResult(
-        OperationResult<Models.PublicationRequest> result)
+        OperationResult<PublicationRequest> result)
     {
         switch (result.Status)
         {
@@ -98,9 +129,14 @@ public class PublicationRequestsController : ControllerBase
             case OperationStatus.Conflict:
                 return Conflict(ApiError.Conflict(result.Message!));
 
+            case OperationStatus.Forbidden:
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new ApiError("forbidden", result.Message!));
+
             default:
                 return BadRequest(ApiError.Validation(
-                    new Dictionary<string, string> { ["status"] = result.Message! }));
+                    new Dictionary<string, string> { [result.Field ?? "request"] = result.Message! }));
         }
     }
 }

@@ -24,6 +24,8 @@ public static class PostgresStorage
 
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IPublicationRequestStore, EfPublicationRequestStore>();
+        services.AddScoped<IUserStore, EfUserStore>();
+        services.AddScoped<IDepartmentStore, EfDepartmentStore>();
 
         return services;
     }
