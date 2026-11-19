@@ -7,7 +7,7 @@
 | Студент | Чам Кебба |
 | Группа | ТРИС-2-23 |
 | Тема | «База знаний КГЭУ»: модуль согласования и публикации материалов (семестровая часть темы ВКР №6) |
-| Стек | React + Vite · ASP.NET Core 8 · PostgreSQL (клиент на React — по согласованию с преподавателем 06.10.2026) |
+| Стек | React + Vite · ASP.NET Core 8 · PostgreSQL 16 (клиент на React — по согласованию с преподавателем 06.10.2026) |
 
 Сотрудник подразделения подаёт заявку на публикацию материала → координатор назначает редактора → редактор проверяет и публикует материал или отклоняет заявку.
 
@@ -15,30 +15,17 @@
 
 ---
 
-## Сервер (backend)
+## Что нужно на рабочем месте
 
-Нужен .NET SDK 8.0 или новее (`dotnet --version`).
-
-```bash
-cd backend
-dotnet restore
-dotnet run
-```
-
-| Адрес | Что это |
+| Инструмент | Версия |
 |---|---|
-| `http://localhost:5000` | базовый адрес API |
-| `http://localhost:5000/swagger` | Swagger, доступен в режиме Development |
-| `http://localhost:5000/health` | проверка живости процесса |
-| `http://localhost:5000/info` | имя приложения, среда, режим хранения |
+| .NET SDK | 8.0 или новее |
+| Node.js | 22.18+ (LTS) или 24.12+ |
+| PostgreSQL | 14 или новее |
 
-Важно:
+Проверка: `dotnet --version`, `node -v`, `psql --version`.
 
-- заявки хранятся в PostgreSQL: после перезапуска сервера записи на месте;
-- `GET /health` отвечает `200`, когда процесс запущен и маршрут отвечает. Это **не** доказывает, что создание заявки работает: `/health` не принимает `title`, `departmentId` и `description`;
-- маршруты заявок описаны в Swagger и в `docs/api-contract.md`.
-
-## База данных
+## 1. База данных
 
 ```bash
 createdb kb_kgeu
@@ -56,20 +43,35 @@ dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Da
 
 ```bash
 cd backend
-dotnet ef database update      # dotnet tool install --global dotnet-ef, если команды нет
+dotnet ef database update
 ```
 
-Учебные данные:
+Учебные данные (подразделения и примеры заявок):
 
 ```bash
 psql -d kb_kgeu -f db/seed.sql
 ```
 
-Файлы `db/schema.sql`, `db/seed.sql`, `db/queries.sql` — результат ЛР9: та же схема на чистом SQL.
+Файлы `db/schema.sql`, `db/seed.sql`, `db/queries.sql` — результат ЛР9: та же схема, но на чистом SQL.
 
-## Клиент (frontend)
+## 2. Сервер API
 
-Нужен Node.js 22.18+ (LTS) или 24.12+.
+```bash
+cd backend
+dotnet restore
+dotnet run
+```
+
+| Адрес | Что это |
+|---|---|
+| `http://localhost:5000` | базовый адрес API |
+| `http://localhost:5000/swagger` | Swagger в режиме Development |
+| `http://localhost:5000/health` | только проверка живости процесса |
+| `http://localhost:5000/info` | имя приложения, среда, режим хранения |
+
+`GET /health` отвечает `200`, даже если заявки не создаются: это проверка процесса, а не функции создания.
+
+## 3. Клиент
 
 ```bash
 cp frontend/.env.example frontend/.env   # Windows: copy frontend\.env.example frontend\.env
@@ -78,9 +80,18 @@ npm install
 npm run dev
 ```
 
-Открыть `http://localhost:5173`. Адреса: `/` — список, `/new` — создание, `/login` — вход. Пока данные берутся из учебного mock (`VITE_USE_MOCK=true`), сервер подключается позже.
+Открыть `http://localhost:5173`. Адреса: `/` — список, `/new` — создание, `/login` — вход.
 
-## Учебные учётные записи
+`frontend/.env` в Git не хранится. Значения по умолчанию:
+
+```dotenv
+VITE_API_BASE_URL=http://localhost:5000
+VITE_USE_MOCK=false
+```
+
+`VITE_USE_MOCK=true` переключает список и создание на учебный mock — удобно, если сервер ещё не поднят.
+
+## 4. Учебные учётные записи
 
 Только для локального стенда курса:
 
@@ -90,7 +101,20 @@ npm run dev
 | `coordinator` | `Coordinator-2026` | координатор | назначает редактора |
 | `editor` | `Editor-2026` | редактор | меняет статус своих заявок |
 
-Пользователей с хэшами паролей создаёт сервер при первом запуске в режиме Development. В базе лежит хэш `PasswordHasher<User>`, а не пароль. Права по ролям — [`docs/role-matrix.md`](docs/role-matrix.md).
+Пользователей с хэшами паролей создаёт сервер при первом запуске в режиме Development. В базе лежит хэш `PasswordHasher<User>`, а не пароль.
+
+## 5. Проверочный сценарий
+
+1. Войти как `author`, создать заявку на `/new` — в списке появляется номер вида `БЗ-2026-0001`, статус «Поступила».
+2. Войти как `coordinator`, выбрать редактора в строке заявки — статус не меняется, редактор записан.
+3. Войти как `editor`, нажать «Взять на проверку» — статус «На проверке».
+4. Остановить API (`Ctrl+C`), запустить снова, обновить список — заявка на месте.
+
+Подробности и ожидаемые коды: [`docs/acceptance-check.md`](docs/acceptance-check.md).
+
+## 6. Известные ограничения
+
+Список ведётся в [`docs/known-defects.md`](docs/known-defects.md).
 
 ## Документы
 
@@ -99,6 +123,16 @@ npm run dev
 - [Заявка на тему](docs/project-proposal.md) · [Требования](docs/lab-01-requirements.md)
 - [Архитектура](docs/architecture.md) · [Модель данных](docs/data-model.md) · [Контракт API](docs/api-contract.md) · [Матрица требований](docs/requirements-matrix.md)
 
-**ЛР3–7. Клиент и каркас сервера**
+**ЛР3–6. Клиент**
 
+- [Отчёты](docs/reports/) — каркас, маршруты, форма, API-модуль и состояния UI
+
+**ЛР7–12. Сервер, база и сборка**
+
+- [Коллекция запросов](docs/api-collection/) · [Матрица ролей](docs/role-matrix.md)
+- [Проверка критериев](docs/acceptance-check.md) · [Известные дефекты](docs/known-defects.md)
+
+**ЛР13. Предзащита**
+
+- [Чеклист предзащиты](docs/predefense-check.md) · [Пояснительная записка](docs/kursovaya-zapiska.md)
 - [Отчёты по лабораторным](docs/reports/)

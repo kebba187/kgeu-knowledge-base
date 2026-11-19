@@ -12,6 +12,8 @@ __pycache__/
 
 # Секреты
 .env
+
+
 # .NET
 bin/
 obj/
