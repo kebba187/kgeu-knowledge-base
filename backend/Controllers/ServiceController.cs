@@ -35,8 +35,8 @@ public class ServiceController : ControllerBase
     {
         application = "База знаний КГЭУ · API",
         environment = _environment.EnvironmentName,
-        version = "ЛР7",
-        storage = "память процесса; PostgreSQL появится в ЛР10",
-        requestsInMemory = _store.GetAll().Count,
+        version = "ЛР13",
+        storage = "PostgreSQL через EF Core",
+        requestsTotal = _store.GetAll().Count,
     });
 }

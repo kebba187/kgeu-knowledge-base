@@ -6,5 +6,7 @@ namespace KbKgeu.Api.Dtos;
 public class ChangeStatusRequest
 {
     [Required(ErrorMessage = "Статус обязателен")]
+    [RegularExpression("^(New|InProgress|Closed|Cancelled)$",
+        ErrorMessage = "Статус: New, InProgress, Closed или Cancelled")]
     public string Status { get; set; } = string.Empty;
 }

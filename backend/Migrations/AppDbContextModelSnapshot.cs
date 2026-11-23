@@ -17,7 +17,7 @@ namespace KbKgeu.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.34")
+                .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -103,7 +103,12 @@ namespace KbKgeu.Api.Migrations
                     b.HasIndex("AssigneeUserId")
                         .HasDatabaseName("publication_requests_assignee_user_id_idx");
 
-                    b.HasIndex("CreatedByUserId");
+                    b.HasIndex("CreatedAt")
+                        .IsDescending()
+                        .HasDatabaseName("publication_requests_created_at_idx");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("publication_requests_created_by_user_id_idx");
 
                     b.HasIndex("DepartmentId")
                         .HasDatabaseName("publication_requests_department_id_idx");

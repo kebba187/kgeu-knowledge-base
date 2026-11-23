@@ -49,9 +49,13 @@ CREATE INDEX publication_requests_status_idx
 CREATE INDEX publication_requests_department_id_idx
     ON publication_requests (department_id);
 
--- Ускоряет экран редактора «мои заявки».
-CREATE INDEX publication_requests_assignee_user_id_idx
-    ON publication_requests (assignee_user_id);
+-- Ускоряет экран автора «мои заявки» (ФТ-4).
+CREATE INDEX publication_requests_created_by_user_id_idx
+    ON publication_requests (created_by_user_id);
+
+-- Ускоряет сортировку списка по дате (queries.sql, НФТ-4).
+CREATE INDEX publication_requests_created_at_idx
+    ON publication_requests (created_at DESC);
 
 COMMENT ON TABLE publication_requests IS 'Заявки на публикацию материалов базы знаний';
 COMMENT ON COLUMN publication_requests.number IS 'Человеческий номер вида БЗ-2026-0001';

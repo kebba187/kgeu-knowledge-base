@@ -67,6 +67,11 @@ public class AppDbContext : DbContext
             entity.HasIndex(item => item.DepartmentId).HasDatabaseName("publication_requests_department_id_idx");
             entity.HasIndex(item => item.AssigneeUserId).HasDatabaseName("publication_requests_assignee_user_id_idx");
 
+            entity.HasIndex(item => item.CreatedByUserId).HasDatabaseName("publication_requests_created_by_user_id_idx");
+            entity.HasIndex(item => item.CreatedAt)
+                .HasDatabaseName("publication_requests_created_at_idx")
+                .IsDescending();
+
             entity.HasOne<Department>()
                 .WithMany()
                 .HasForeignKey(item => item.DepartmentId)
