@@ -1,10 +1,17 @@
 import PropTypes from 'prop-types'
-import { departmentName, statusLabels } from '../dictionaries.js'
+import { statusLabels } from '../dictionaries.js'
 import { Role } from '../authStore.js'
 
 // Таблица только рисует то, что ей передали через props.
 // Своего массива у неё нет и копию входного массива она не делает.
-export default function TicketTable({ items, user, editors, onAssign, onChangeStatus, busyId }) {
+export default function TicketTable({
+  items,
+  user,
+  editors = [],
+  onAssign,
+  onChangeStatus,
+  busyId,
+}) {
   const showActions = Boolean(user) && (user.role === Role.Coordinator || user.role === Role.Editor)
 
   return (
@@ -15,8 +22,9 @@ export default function TicketTable({ items, user, editors, onAssign, onChangeSt
           <tr>
             <th scope="col">Номер</th>
             <th scope="col">Заголовок</th>
-            <th scope="col">Подразделение (departmentId)</th>
+            <th scope="col">Подразделение</th>
             <th scope="col">Статус</th>
+            <th scope="col">Редактор</th>
             {showActions && <th scope="col">Действия</th>}
           </tr>
         </thead>
@@ -30,12 +38,15 @@ export default function TicketTable({ items, user, editors, onAssign, onChangeSt
                 <span className="row-description">{item.description}</span>
               </td>
               <td>
-                {item.departmentId} · {departmentName(item.departmentId)}
+                {/* Название приходит с сервера вместе с заявкой, а не из файла в коде. */}
+                {item.departmentName ?? '—'} {' '}
+                <code>{item.departmentId}</code>
               </td>
               <td>
                 <span className={`status status--${item.status}`}>{statusLabels[item.status]}</span>
                 <code>{item.status}</code>
               </td>
+              <td>{item.assigneeFullName ?? <span className="hint">не назначен</span>}</td>
               {showActions && (
                 <td>
                   <RowActions
@@ -121,6 +132,8 @@ const userShape = PropTypes.shape({
 })
 
 // Обязательный prop: без массива таблицу рисовать нечем.
+// defaultProps для функциональных компонентов в React 19 не работает,
+// поэтому значение по умолчанию задано прямо в параметрах.
 TicketTable.propTypes = {
   items: PropTypes.array.isRequired,
   user: userShape,
@@ -128,10 +141,6 @@ TicketTable.propTypes = {
   onAssign: PropTypes.func,
   onChangeStatus: PropTypes.func,
   busyId: PropTypes.number,
-}
-
-TicketTable.defaultProps = {
-  editors: [],
 }
 
 RowActions.propTypes = {

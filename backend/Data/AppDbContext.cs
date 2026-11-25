@@ -46,16 +46,31 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PublicationRequest>(entity =>
         {
-            entity.ToTable("publication_requests", table => table.HasCheckConstraint(
-                "publication_requests_status_check",
-                "status IN ('New', 'InProgress', 'Closed', 'Cancelled')"));
+            // Ограничения те же, что в db/schema.sql: длины проверяет база,
+            // а не только DTO и сервис.
+            entity.ToTable("publication_requests", table =>
+            {
+                table.HasCheckConstraint(
+                    "publication_requests_status_check",
+                    "status IN ('New', 'InProgress', 'Closed', 'Cancelled')");
+                table.HasCheckConstraint(
+                    "publication_requests_title_check",
+                    "char_length(title) BETWEEN 5 AND 80");
+                table.HasCheckConstraint(
+                    "publication_requests_description_check",
+                    "char_length(description) BETWEEN 10 AND 500");
+            });
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Id).HasColumnName("id");
             entity.Property(item => item.Number).HasColumnName("number").HasMaxLength(20).IsRequired();
             entity.Property(item => item.Title).HasColumnName("title").HasMaxLength(80).IsRequired();
             entity.Property(item => item.Description).HasColumnName("description").HasMaxLength(500).IsRequired();
             entity.Property(item => item.DepartmentId).HasColumnName("department_id");
-            entity.Property(item => item.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            entity.Property(item => item.Status)
+                .HasColumnName("status")
+                .HasMaxLength(20)
+                .IsRequired()
+                .HasDefaultValue(RequestStatus.New);
             entity.Property(item => item.CreatedByUserId).HasColumnName("created_by_user_id");
             // NULL разрешён: у новой заявки редактора ещё нет.
             entity.Property(item => item.AssigneeUserId).HasColumnName("assignee_user_id");
@@ -72,17 +87,19 @@ public class AppDbContext : DbContext
                 .HasDatabaseName("publication_requests_created_at_idx")
                 .IsDescending();
 
-            entity.HasOne<Department>()
+            // Связи заданы через навигационные свойства: теперь доступны
+            // .Include(...) и JOIN в проекции (docs/known-defects.md, D-02).
+            entity.HasOne(item => item.Department)
                 .WithMany()
                 .HasForeignKey(item => item.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne<User>()
+            entity.HasOne(item => item.CreatedByUser)
                 .WithMany()
                 .HasForeignKey(item => item.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne<User>()
+            entity.HasOne(item => item.AssigneeUser)
                 .WithMany()
                 .HasForeignKey(item => item.AssigneeUserId)
                 .OnDelete(DeleteBehavior.Restrict);

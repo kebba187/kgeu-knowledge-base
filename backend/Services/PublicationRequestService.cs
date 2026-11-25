@@ -29,6 +29,24 @@ public class PublicationRequestService
 
     public IReadOnlyList<PublicationRequest> GetAll() => _store.GetAll();
 
+    /// <summary>
+    /// Список для вошедшего пользователя. Область видимости задаёт роль:
+    /// автор видит свои заявки (ФТ-4), редактор — назначенные ему (ФТ-8),
+    /// координатор — все, с необязательными фильтрами (ФТ-5).
+    /// Отбор выполняет база, а не память процесса.
+    /// </summary>
+    public IReadOnlyList<PublicationRequestResponse> GetListFor(
+        int userId,
+        string? role,
+        string? status,
+        int? departmentId)
+    {
+        var createdBy = role == UserRole.Author ? userId : (int?)null;
+        var assignee = role == UserRole.Editor ? userId : (int?)null;
+
+        return _store.GetList(createdBy, assignee, status, departmentId);
+    }
+
     public PublicationRequest? GetById(int id) => _store.GetById(id);
 
     /// <summary>

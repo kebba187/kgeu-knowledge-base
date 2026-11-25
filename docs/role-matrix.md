@@ -12,7 +12,7 @@
 | Действие | Автор | Координатор | Редактор | Гость |
 |---|---|---|---|---|
 | Войти (`POST /api/auth/login`) | да | да | да | да |
-| Список заявок (`GET /api/publication-requests`) | да | да | да | нет → 401 |
+| Список заявок (`GET /api/publication-requests`) | да, только свои | да, все + фильтры `status` и `departmentId` | да, только назначенные ему | нет → 401 |
 | Одна заявка (`GET /api/publication-requests/{id}`) | да | да | да | нет → 401 |
 | Создать заявку (`POST /api/publication-requests`) | да | нет → 403 | нет → 403 | нет → 401 |
 | Назначить редактора (`PATCH /{id}/assignee`) | нет → 403 | да | нет → 403 | нет → 401 |
@@ -22,6 +22,8 @@
 
 «Своя заявка» для редактора — та, где `assignee_user_id` равен его `id`.
 
+Область видимости списка задаёт не экран, а сервер: `PublicationRequestService.GetListFor` выбирает условие по роли из claims, поэтому тот же запрос через Swagger или curl вернёт ровно те же строки.
+
 ## Где проверяется
 
 | Проверка | Код |
@@ -29,6 +31,7 @@
 | вход выполнен | `[Authorize]` на контроллере, cookie-схема в `Program.cs` |
 | роль подходит | `[Authorize(Roles = ...)]` на действии |
 | заявка принадлежит редактору | `PublicationRequestService.ChangeStatus`, сравнение `AssigneeUserId` с id из claims |
+| область видимости списка | `PublicationRequestService.GetListFor`, условие по роли уходит в `WHERE` |
 | правила перехода статуса | `RequestStatus.CanMove` + проверка назначенного редактора |
 
 Кнопка, спрятанная на экране, правом не является: тот же запрос через Swagger или curl получает 401 или 403.
@@ -52,6 +55,8 @@
 | `author` | автор | `Author-2026` |
 | `coordinator` | координатор | `Coordinator-2026` |
 | `editor` | редактор | `Editor-2026` |
+| `editor2` | редактор | `Editor2-2026` |
+
 
 ## Безопасный вывод
 

@@ -60,8 +60,8 @@ builder.Services
         options.Cookie.Name = "kb.session";
         options.Cookie.HttpOnly = true;
         // Клиент на другом порту (5173), поэтому cookie межсайтовая.
-        options.Cookie.SameSite = SameSiteMode.None;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
 
@@ -76,6 +76,14 @@ builder.Services
             StatusCodes.Status403Forbidden,
             new ApiError("forbidden", "Недостаточно прав для этого действия"));
     });
+
+builder.Services.AddControllers(options =>
+{
+    options.ModelBindingMessageProvider.SetAttemptedValueIsInvalidAccessor(
+        (value, field) => $"Значение «{value}» не подходит для поля {field}");
+    options.ModelBindingMessageProvider.SetValueIsInvalidAccessor(
+        value => $"Значение «{value}» не подходит");
+});
 
 builder.Services.AddAuthorization();
 

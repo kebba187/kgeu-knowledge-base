@@ -14,6 +14,7 @@ public class InMemoryUserStore : IUserStore
     public InMemoryUserStore(IPasswordHasher<User> hasher)
     {
         _users = StudyUsers.Accounts
+        
             .Select((account, index) =>
             {
                 var user = new User
@@ -51,5 +52,6 @@ public static class StudyUsers
         new("author", "Сотрудник учебного отдела", UserRole.Author, "Author-2026"),
         new("coordinator", "Координатор базы знаний", UserRole.Coordinator, "Coordinator-2026"),
         new("editor", "Редактор базы знаний", UserRole.Editor, "Editor-2026"),
+        new("editor2", "Второй редактор базы знаний", UserRole.Editor, "Editor2-2026"),
     };
 }

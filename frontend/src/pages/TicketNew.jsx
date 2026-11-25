@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getDepartments } from '../api/departments.js'
 import { createTicket, getDemoFlags } from '../api/tickets.js'
 import DemoSwitches from '../components/DemoSwitches.jsx'
-import { departments } from '../dictionaries.js'
 import { appendTicket } from '../ticketsStore.js'
 
 const emptyForm = { title: '', departmentId: '', description: '' }
 
 // Проверки курса: тема 5–80 после trim, departmentId — целое > 0 из справочника,
-// описание 10–500. Клиентская проверка помогает человеку, серверная будет в ЛР8.
-function validate(form) {
+// описание 10–500. Справочник приходит с сервера, своей копии у клиента нет.
+function validate(form, departments) {
   const errors = {}
   const title = form.title.trim()
 
@@ -17,8 +17,8 @@ function validate(form) {
     errors.title = 'Заголовок: от 5 до 80 символов'
   }
   if (!Number.isInteger(form.departmentId) || form.departmentId <= 0) {
-    errors.departmentId = 'Подразделение: целое число больше нуля'
-  } else if (!departments.some((d) => d.id === form.departmentId)) {
+    errors.departmentId = 'Подразделение: выберите из списка'
+  } else if (departments.length > 0 && !departments.some((d) => d.id === form.departmentId)) {
     errors.departmentId = 'Такого подразделения нет в справочнике'
   }
   if (form.description.trim().length < 10 || form.description.trim().length > 500) {
@@ -32,11 +32,30 @@ export default function TicketNew() {
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setSubmitting] = useState(false)
+  const [departments, setDepartments] = useState([])
+  const [departmentsError, setDepartmentsError] = useState('')
   const navigate = useNavigate()
 
   const titleInput = useRef(null)
   useEffect(() => {
     titleInput.current?.focus()
+  }, [])
+
+  // Справочник подразделений — из API, а не из файла в репозитории.
+  useEffect(() => {
+    let cancelled = false
+
+    getDepartments()
+      .then((list) => {
+        if (!cancelled) setDepartments(list)
+      })
+      .catch(() => {
+        if (!cancelled) setDepartmentsError('Не удалось загрузить справочник подразделений')
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   function updateField(field, value) {
@@ -50,7 +69,7 @@ export default function TicketNew() {
     if (isSubmitting) return
 
     // Учебный режим «без клиентской проверки» нужен, чтобы увидеть ответ 400 от сервера.
-    const found = getDemoFlags().skipClientValidation ? {} : validate(form)
+    const found = getDemoFlags().skipClientValidation ? {} : validate(form, departments)
     setErrors(found)
     setSubmitError('')
     if (Object.keys(found).length > 0) return
@@ -104,35 +123,37 @@ export default function TicketNew() {
             </p>
           )}
 
-          <label htmlFor="departmentId">Подразделение (номер из справочника)</label>
-          <input
+          <label htmlFor="departmentId">Подразделение</label>
+          <select
             id="departmentId"
             name="departmentId"
-            type="number"
-            min={1}
             value={form.departmentId}
+            disabled={departments.length === 0}
             onChange={(event) => {
-              // Поле number отдаёт строку: приводим к числу, как v-model.number во Vue.
+              // Значение select — строка: приводим к числу, как того ждёт API.
               const raw = event.target.value
               updateField('departmentId', raw === '' ? '' : Number(raw))
             }}
             aria-invalid={Boolean(errors.departmentId)}
-            aria-describedby={
-              errors.departmentId ? 'departmentId-error departmentId-hint' : 'departmentId-hint'
-            }
-          />
+            aria-describedby={errors.departmentId ? 'departmentId-error' : undefined}
+          >
+            <option value="">— выберите подразделение —</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+          {departmentsError && (
+            <p className="field-error" role="alert">
+              {departmentsError}
+            </p>
+          )}
           {errors.departmentId && (
             <p id="departmentId-error" className="field-error">
               {errors.departmentId}
             </p>
           )}
-          <p id="departmentId-hint" className="hint">
-            {departments.map((d) => (
-              <span key={d.id}>
-                {d.id} — {d.name}
-              </span>
-            ))}
-          </p>
 
           <label htmlFor="description">Описание, 10–500 символов</label>
           <textarea

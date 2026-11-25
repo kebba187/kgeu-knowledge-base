@@ -37,14 +37,18 @@
 
 ## 4. Доказательство успеха — один id в трёх местах
 
-Прогон на стенде: id = ____ · number = ____
+Прогон на стенде 24.11.2026: id = 10 · number = БЗ-2026-0010
 
 | Где | Что показать | Факт |
 |---|---|---|
-| UI | строка заявки со статусом | |
-| Network | `POST /api/publication-requests` → `201`, `id` в Response | |
-| SQL | `SELECT id, number, title, status, assignee_user_id FROM publication_requests WHERE id = __;` | |
-| после рестарта API | `GET /api/publication-requests/{id}` → `200` | |
+| UI | строка заявки со статусом | «Проверка критериев приемки ЛР12», «Учебный отдел», «На проверке», редактор «Второй редактор базы знаний» |
+| Network | `POST /api/publication-requests` → `201`, `id` в Response | **201 Created**, `Location: http://localhost:5000/api/publication-requests/10`, в теле `id = 10` |
+| SQL | `SELECT id, number, title, status, assignee_user_id FROM publication_requests WHERE id = 10;` | `10 · БЗ-2026-0010 · Проверка критериев приемки ЛР12 · InProgress · 4` |
+| после рестарта API | `GET /api/publication-requests/{id}` → `200` | **200**, те же `number`, `title` и `status`; данные пережили перезапуск процесса |
+
+Полный протокол прогона — в [`docs/acceptance-check.md`](../acceptance-check.md):
+три критерия, восемь проверок запретов, область видимости списка по ролям,
+фильтры, ограничения базы и безопасный вывод HTML.
 
 Последовательность запросов, снятая в браузере во время прогона:
 

@@ -26,12 +26,34 @@ public class PublicationRequestsController : ControllerBase
         _service = service;
     }
 
-    /// <summary>Список заявок. Пустой список — это 200 и [], а не 404.</summary>
+    /// <summary>
+    /// Список заявок вошедшего пользователя. Пустой список — это 200 и [], а не 404.
+    /// Автор видит свои заявки (ФТ-4), редактор — назначенные ему (ФТ-8),
+    /// координатор — все и может сузить список по статусу и подразделению (ФТ-5).
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<PublicationRequestResponse>), StatusCodes.Status200OK)]
-    public ActionResult<IEnumerable<PublicationRequestResponse>> GetAll()
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
+    public ActionResult<IEnumerable<PublicationRequestResponse>> GetAll(
+        [FromQuery] string? status,
+        [FromQuery] int? departmentId)
     {
-        var items = _service.GetAll().Select(PublicationRequestResponse.From);
+        var userId = CurrentUser.GetId(User);
+        if (userId is null)
+        {
+            return Unauthorized(new ApiError("unauthorized", "Сессия не найдена"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status) && !RequestStatus.IsKnown(status))
+        {
+            return BadRequest(ApiError.Validation(new Dictionary<string, string>
+            {
+                ["status"] = $"Неизвестный статус. Допустимы: {string.Join(", ", RequestStatus.All)}",
+            }));
+        }
+
+        var items = _service.GetListFor(userId.Value, CurrentUser.GetRole(User), status, departmentId);
         return Ok(items);
     }
 

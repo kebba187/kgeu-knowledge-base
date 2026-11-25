@@ -22,11 +22,11 @@
 | ФТ-1. Автор создаёт заявку | `title`, `departmentId`, `description` | `POST /api/publication-requests` | критерий 1, `201` |
 | ФТ-2. Сервер задаёт `id` и `number` | `id`, `number` | ответ на `POST` | `201` |
 | ФТ-3. Проверка полей при создании | `title` 5–80, `departmentId` > 0 и есть в `Department`, `description` 10–500 | `POST /api/publication-requests` | `400` |
-| ФТ-4. Автор видит свои заявки | `createdByUserId` | `GET /api/publication-requests` (фильтр по вошедшему — с ЛР11) | `200` |
+| ФТ-4. Автор видит свои заявки | `createdByUserId` | `GET /api/publication-requests`; отбор в `PublicationRequestService.GetListFor` по роли, `WHERE created_by_user_id` в SQL | `200` |
 | ФТ-5. Координатор видит все и фильтрует | `status`, `departmentId` | `GET /api/publication-requests?status=New&departmentId=1` | `200` |
 | ФТ-6. Координатор назначает редактора | `assigneeUserId` | `PATCH …/assignee`; список редакторов — `GET /api/users?role=Editor` | критерий 2, `200` |
 | ФТ-7. Смена редактора | `assigneeUserId`, `status` ∈ {`New`, `InProgress`} | `PATCH …/assignee` | `200`; для `Closed` / `Cancelled` — `409` |
-| ФТ-8. Редактор видит «Мои заявки» | `assigneeUserId` | `GET /api/publication-requests` (фильтр по вошедшему — с ЛР11) | `200` |
+| ФТ-8. Редактор видит «Мои заявки» | `assigneeUserId` | `GET /api/publication-requests`; отбор в `PublicationRequestService.GetListFor` по роли, `WHERE assignee_user_id` в SQL | `200` |
 | ФТ-9. `New` → `InProgress` | `status` | `PATCH …/status` | критерий 3, `200` |
 | ФТ-10. `InProgress` → `Closed` | `status` | `PATCH …/status` | `200` |
 | ФТ-11. Отклонить → `Cancelled` | `status` | `PATCH …/status` (строка не удаляется, `DELETE` нет) | `200` |
@@ -42,7 +42,7 @@
 | НФТ-1. Данные после перезапуска на месте | таблицы в PostgreSQL | ЛР9–10 |
 | НФТ-2. Права проверяет сервер | проверки в ASP.NET Core (атрибуты авторизации и правила контроллеров), `401` / `403` | ЛР11 |
 | НФТ-3. Пароль только в виде хэша | `users.password_hash` | ЛР11 |
-| НФТ-4. Список из 500 заявок ≤ 2 с | индексы по `status`, `department_id`, `assignee_user_id` | ЛР12 |
+| НФТ-4. Список из 500 заявок ≤ 2 с | индексы по `status`, `department_id`, `assignee_user_id`, `created_by_user_id`, `created_at`; отбор и проекция выполняются в SQL, а не в памяти | ЛР12 |
 | НФТ-5. Только четыре кода статуса | `CHECK` в `publication_requests.status`, проверка в API | ЛР8–10 |
 
 Каждую строку удалось заполнить, значит договор ЛР1 и модель ЛР2 не противоречат друг другу.

@@ -1,3 +1,4 @@
+using KbKgeu.Api.Dtos;
 using KbKgeu.Api.Models;
 
 namespace KbKgeu.Api.Services;
@@ -17,6 +18,48 @@ public class InMemoryPublicationRequestStore : IPublicationRequestStore
         lock (_lock)
         {
             return _items.OrderBy(item => item.Id).ToList();
+        }
+    }
+
+    /// <summary>
+    /// Те же условия отбора, что и у варианта с базой, но в памяти.
+    /// Названия подразделения и ФИО здесь недоступны: у этого хранилища
+    /// нет справочников, поэтому они остаются null.
+    /// </summary>
+    public IReadOnlyList<PublicationRequestResponse> GetList(
+        int? createdByUserId,
+        int? assigneeUserId,
+        string? status,
+        int? departmentId)
+    {
+        lock (_lock)
+        {
+            IEnumerable<PublicationRequest> query = _items;
+
+            if (createdByUserId is not null)
+            {
+                query = query.Where(item => item.CreatedByUserId == createdByUserId.Value);
+            }
+
+            if (assigneeUserId is not null)
+            {
+                query = query.Where(item => item.AssigneeUserId == assigneeUserId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                query = query.Where(item => item.Status == status);
+            }
+
+            if (departmentId is not null)
+            {
+                query = query.Where(item => item.DepartmentId == departmentId.Value);
+            }
+
+            return query
+                .OrderByDescending(item => item.CreatedAt)
+                .Select(PublicationRequestResponse.From)
+                .ToList();
         }
     }
 

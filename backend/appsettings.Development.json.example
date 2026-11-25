@@ -1,0 +1,12 @@
+{
+  "_comment": "Пример. Скопируйте строку подключения в user-secrets, а не в appsettings.Development.json — тот файл под контролем версий.",
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5432;Database=kb_kgeu;Username=postgres;Password={PUT_YOUR_PASSWORD_HERE}"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Information"
+    }
+  }
+}

@@ -84,8 +84,10 @@ namespace KbKgeu.Api.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
+                        .HasDefaultValue("New")
                         .HasColumnName("status");
 
                     b.Property<string>("Title")
@@ -121,7 +123,11 @@ namespace KbKgeu.Api.Migrations
 
                     b.ToTable("publication_requests", null, t =>
                         {
+                            t.HasCheckConstraint("publication_requests_description_check", "char_length(description) BETWEEN 10 AND 500");
+
                             t.HasCheckConstraint("publication_requests_status_check", "status IN ('New', 'InProgress', 'Closed', 'Cancelled')");
+
+                            t.HasCheckConstraint("publication_requests_title_check", "char_length(title) BETWEEN 5 AND 80");
                         });
                 });
 
@@ -171,22 +177,28 @@ namespace KbKgeu.Api.Migrations
 
             modelBuilder.Entity("KbKgeu.Api.Models.PublicationRequest", b =>
                 {
-                    b.HasOne("KbKgeu.Api.Models.User", null)
+                    b.HasOne("KbKgeu.Api.Models.User", "AssigneeUser")
                         .WithMany()
                         .HasForeignKey("AssigneeUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("KbKgeu.Api.Models.User", null)
+                    b.HasOne("KbKgeu.Api.Models.User", "CreatedByUser")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("KbKgeu.Api.Models.Department", null)
+                    b.HasOne("KbKgeu.Api.Models.Department", "Department")
                         .WithMany()
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AssigneeUser");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Department");
                 });
 #pragma warning restore 612, 618
         }
